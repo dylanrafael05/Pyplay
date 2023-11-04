@@ -20,7 +20,8 @@ def run():
         threads.spawner = spr
         for os in spr._on_start:
             os()
-        threads.spawner = None
+            
+    threads.spawner = None
 
     for str in all_starts:
         str()

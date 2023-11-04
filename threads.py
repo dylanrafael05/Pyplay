@@ -48,7 +48,8 @@ def _cur_thread():
     return _running_threads[threading.current_thread().name]
 
 def thread_kill_check():
-    if _cur_thread().dead:
+    cth = _cur_thread()
+    if cth is not None and cth.dead:
         raise ThreadKilledError()
 
 def thread_operation(name):
@@ -79,6 +80,9 @@ def kill_spawner(spawner):
         for thr in _threads_by_spawner[spawner]:
             thr.kill()
 
+    thread_kill_check()
+
+
 def script(f):
 
     def inner():
@@ -106,7 +110,7 @@ def script(f):
             if spawner in _threads_by_spawner:
                 _threads_by_spawner[spawner].append(thr)
             else:
-                _threads_by_spawner[spawner] = []
+                _threads_by_spawner[spawner] = [thr]
 
         thr.start()
 

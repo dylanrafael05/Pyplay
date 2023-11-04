@@ -14,7 +14,8 @@ cat_dead = Event()
 def cat_spawn():
 
     wait(1)
-    delete(cat)
+    delete()
+
     broadcast(cat_dead)
 
 
