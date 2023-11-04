@@ -1,6 +1,6 @@
 import random
 import pygame
-import threads
+from threads import get_current_sprite
 
 class Sprite:
 
@@ -125,7 +125,7 @@ def glide_to_position(x: int, y: int, time: int):
     """
     spr = get_current_sprite()
 
-    pass # wait until Dylan puts in wait_until_next_frame
+    spr
             
     
 all_sprites: list[Sprite] = []
