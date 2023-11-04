@@ -24,8 +24,9 @@ def cat_clone():
 def cat_spawn():
 
     wait(1)
-
+    
     clone()
+    change_color(255, 0, 0)
 
     broadcast(cat_dead)
 

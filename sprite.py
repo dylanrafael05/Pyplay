@@ -12,6 +12,7 @@ class Sprite:
         self.y = 0
         self.angle = 0
         self.size = 100
+        self.color = (255, 255, 255, 255)
 
         self.costume = 0
 
@@ -77,6 +78,8 @@ class Sprite:
 
         rot_img: pygame.surface.Surface = \
             pygame.transform.rotozoom(self.image, self.angle, self.size / 100)
+
+        rot_img.fill(self.color, special_flags=pygame.BLEND_RGBA_MIN)
 
         surf.blit(
             rot_img,
@@ -154,7 +157,6 @@ def change_size(factor: int):
 def percent_size(percent : int):
     get_current_sprite().size = percent
 
-
 def move(x: int, y: int):
     """
     Moves a sprite by a given amount.
@@ -170,6 +172,18 @@ def move_to(x: int, y: int):
     spr = get_current_sprite()
     spr.x = x
     spr.y = y
+
+def move_x(x: int):
+    """
+    Moves a sprite by a given amount on the x axis.
+    """
+    get_current_sprite().x += x
+
+def move_y(y: int):
+    """
+    Moves a sprite by a given amount on the y axis.
+    """
+    get_current_sprite().y += y
 
 def rotate(angle: int):
     """
@@ -197,6 +211,19 @@ def glide_to_position(x: int, y: int, time: int):
     """
     spr = get_current_sprite()
 
+    xstart = spr.x
+    ystart = spr.y
+
+    xdiff = x - spr.x
+    ydiff = y - spr.y
+
+    frames = time * 60
+
+    for i in range(frames):
+        wait_frame()
+        spr.x = xstart + xdiff * (i / frames)
+        spr.y = ystart + ydiff * (i / frames)
+
     spr
 
 def is_clone():
@@ -204,6 +231,11 @@ def is_clone():
     Get if the current sprite is a clone
     """
     return get_current_sprite()._is_clone
+
+def change_color(r : int, g: int, b : int):
+    spr = get_current_sprite()
+    color = (r, g, b, 255)
+    spr.color = color
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []

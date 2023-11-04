@@ -28,7 +28,7 @@ def run():
 
     while True:
         advance_frame()
-        scr.fill('#000000')
+        scr.fill('#FFFFFF')
 
         for event in pygame.event.get():
             match event.type:
