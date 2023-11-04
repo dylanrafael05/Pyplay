@@ -7,6 +7,7 @@ import threads
 from threads import *
 from sprite import *
 from events import *
+from sound import *
 
 SCREEN_DIMS = 1000, 666
 
@@ -34,6 +35,8 @@ def run():
                 case pygame.QUIT:
                     pygame.quit()
                     exit(0)
+                case pygame.KEYDOWN:
+                    broadcast_key_press(event.key)
 
         for spr in all_sprites:
             for thread in spr._threads:

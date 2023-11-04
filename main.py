@@ -1,7 +1,7 @@
 from pyplay import *
 
 
-cat = Sprite('katana1.png')
+cat = Sprite('python py.png')
 cat.x = 500
 cat.y = 500
 

@@ -1,6 +1,7 @@
 from typing import Any
 from sprite import Sprite
 from threads import script
+import pygame
 
 class Event:
     def __init__(self) -> None:
@@ -27,3 +28,20 @@ def on(event: Event, spr: Sprite = None):
 def broadcast(event: Event, *args, **kwargs):
     for e in _global_event_map[event]:
         e(*args, **kwargs)
+
+
+
+# Key press
+key_press_events = dict[int, Event]()
+def key_press(key: int):
+    if (key not in key_press_events):
+        key_press_events[key] = Event()
+    return key_press_events[key]
+
+def broadcast_key_press(key: int):
+    if (key not in key_press_events):
+        return
+    broadcast(key_press_events[key])
+
+def get_key_down(key: int):
+    return pygame.key.get_pressed()[key]

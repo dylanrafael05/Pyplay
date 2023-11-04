@@ -1,3 +1,4 @@
+import math
 import random
 import pygame
 import threads
@@ -236,6 +237,38 @@ def glide_to_position(x: int, y: int, time: int):
         spr.x = xstart + xdiff * (i / frames)
         spr.y = ystart + ydiff * (i / frames)
 
+def move_forward(distance: int):
+    """
+    Moves a sprite forward by a given distance.
+    """
+    spr = get_current_sprite()
+
+    spr.x += distance * math.cos(math.radians(spr.angle))
+    spr.y += distance * math.sin(math.radians(spr.angle))
+
+def move_backward(distance: int):
+    """
+    Moves a sprite backward by a given distance.
+    """
+    spr = get_current_sprite()
+
+    spr.x -= distance * math.cos(math.radians(spr.angle))
+    spr.y -= distance * math.sin(math.radians(spr.angle))
+
+def turn_left(angle: int):
+    """
+    Turns a sprite left by a given angle.
+    """
+    spr = get_current_sprite()
+    spr.angle -= angle
+
+def turn_right(angle: int):
+    """
+    Turns a sprite right by a given angle.
+    """
+    spr = get_current_sprite()
+    spr.angle += angle
+
 def is_clone():
     """
     Get if the current sprite is a clone
@@ -246,6 +279,16 @@ def change_color(r : int, g: int, b : int):
     spr = get_current_sprite()
     color = (r, g, b, 255)
     spr.color = color
+
+def ghost(alpha):
+    spr = get_current_sprite()
+    spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
+
+def show():
+    spr = get_current_sprite()
+    spr.shown()
+
+
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
