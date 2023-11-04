@@ -1,6 +1,9 @@
 import random
 import pygame
+import threads
 from threads import *
+
+MAX_SPRITES = 500
 
 class Sprite:
 
@@ -14,12 +17,37 @@ class Sprite:
 
         self.shown = True
 
-
         self._all_costumes = Sprite._load_all_images(all_costumes)
 
         self._on_start = []
+        self._on_clone_start = []
+
+        self._event_map = {}
 
         all_sprites.append(self)
+
+        self._is_clone = False
+
+    def _clone_from(self, other: 'Sprite') -> None:
+        self.x = other.x
+        self.y = other.y
+        self.angle = other.angle
+        self.size = other.size
+
+        self.costume = other.costume
+
+        self.shown = other.shown
+
+        self._all_costumes = other._all_costumes
+
+        self._on_start = other._on_clone_start
+        self._on_clone_start = []
+
+        self._event_map = {}
+
+        all_sprites.append(self)
+
+        self._is_clone = True
 
     @staticmethod
     def _load_all_images(filenames: list[str]) -> list[pygame.surface.Surface]:
@@ -34,8 +62,18 @@ class Sprite:
     @property
     def image(self) -> pygame.surface.Surface:
         return self._all_costumes[self.costume] 
+    
+    def _add_event(self, ev, f):
+        if ev in self._event_map:
+            self._event_map[ev].append(f)
+        else:
+            self._event_map[ev] = [f]
+
 
     def _draw(self, surf: pygame.surface.Surface):
+
+        if not self.shown:
+            return
 
         rot_img: pygame.surface.Surface = \
             pygame.transform.rotozoom(self.image, self.angle, self.size / 100)
@@ -57,6 +95,7 @@ def start(spr: Sprite = None):
     if spr is not None:
 
         def inner(f):
+            f = script(f)
             spr._on_start.append(f)
             return f
         return inner
@@ -64,9 +103,41 @@ def start(spr: Sprite = None):
     else:
 
         def inner(f):
+            f = script(f)
             all_starts.append(f)
             return f
         return inner
+    
+
+def clone_start(spr: Sprite):
+    """
+    Defines a script to be run when a sprite is spawned.
+    """
+
+    def inner(f):
+        f = script(f)
+        spr._on_clone_start.append(f)
+        return f
+    return inner
+
+def clone(spr: Sprite = None):
+    """
+    Clones a sprite.
+    """
+    if len(all_sprites) > MAX_SPRITES:
+        return None
+
+    spr = spr or get_current_sprite()
+
+    clone = Sprite()
+    clone._clone_from(spr)
+
+    threads.spawner = clone
+    for _cs in clone._on_start:
+        _cs()
+    threads.spawner = None
+    
+    return clone
 
 def delete(spr: Sprite = None):
     """
@@ -127,7 +198,12 @@ def glide_to_position(x: int, y: int, time: int):
     spr = get_current_sprite()
 
     spr
-            
+
+def is_clone():
+    """
+    Get if the current sprite is a clone
+    """
+    return get_current_sprite()._is_clone
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
