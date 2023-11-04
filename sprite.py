@@ -1,4 +1,6 @@
+import random
 import pygame
+import threads.get_current_sprite
 
 class Sprite:
 
@@ -72,5 +74,50 @@ def delete(spr: Sprite):
     """
     all_sprites.remove(spr)
 
+def move(x: int, y: int):
+    """
+    Moves a sprite by a given amount.
+    """
+    spr = get_current_sprite()
+    spr.x += x
+    spr.y += y
+
+def move_to(x: int, y: int):
+    """
+    Moves a sprite to a given position.
+    """
+    spr = get_current_sprite()
+    spr.x = x
+    spr.y = y
+
+def rotate(angle: int):
+    """
+    Rotates a sprite by a given amount.
+    """
+    get_current_sprite().angle += angle
+
+def rotate_to(angle: int):
+    """
+    Rotates a sprite to a given angle.
+    """
+    get_current_sprite().angle = angle
+
+def go_to_random_position():
+    """
+    Moves a sprite to a random position on the screen.
+    """
+    spr = get_current_sprite()
+    spr.x = random.randint(0, 1000)
+    spr.y = random.randint(0, 666)
+
+def glide_to_position(x: int, y: int, time: int):
+    """
+    Moves a sprite to a given position over a given time.
+    """
+    spr = get_current_sprite()
+
+    pass # wait until Dylan puts in wait_until_next_frame
+            
+    
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []

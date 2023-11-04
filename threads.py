@@ -33,3 +33,6 @@ def script(f):
     inner.__doc__ = f.__doc__
 
     return inner
+
+def get_current_sprite():
+    pass
