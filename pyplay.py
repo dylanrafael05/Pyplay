@@ -7,6 +7,7 @@ import threads
 from threads import *
 from sprite import *
 from events import *
+from sound import *
 
 SCREEN_DIMS = 1000, 666
 
