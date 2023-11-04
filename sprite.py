@@ -30,11 +30,14 @@ class Sprite:
 
         self._is_clone = False
 
+        self._threads: list[threads.Thread] = []
+
     def _clone_from(self, other: 'Sprite') -> None:
         self.x = other.x
         self.y = other.y
         self.angle = other.angle
         self.size = other.size
+        self.color = other.color
 
         self.costume = other.costume
 
@@ -42,8 +45,12 @@ class Sprite:
 
         self._all_costumes = other._all_costumes
 
-        self._on_start = other._on_clone_start
-        self._on_clone_start = []
+        if not other._is_clone:
+            self._on_start = other._on_clone_start
+            self._on_clone_start = []
+        else:
+            self._on_start = other._on_start
+            self._on_clone_start = other._on_clone_start
 
         self._event_map = {}
 
@@ -141,8 +148,8 @@ def clone(spr: Sprite = None):
     clone = Sprite()
     clone._clone_from(spr)
 
-    threads.spawner = clone
     for _cs in clone._on_start:
+        threads.spawner = clone
         _cs()
     threads.spawner = None
     
@@ -154,14 +161,19 @@ def delete(spr: Sprite = None):
     """
     spr = spr or get_current_sprite()
     all_sprites.remove(spr)
-    kill_spawner(spr)
+    
+    for thread in spr._threads:
+        thread.kill()
+
+    threads.thread_kill_check()
+
+def set_size(factor: int):
+    ''' changes the size by a specific number'''
+    get_current_sprite().size = factor
 
 def change_size(factor: int):
     ''' changes the size by a specific number'''
-    get_current_sprite().size = (factor * 100)
-
-def percent_size(percent : int):
-    get_current_sprite().size = percent
+    get_current_sprite().size += factor
 
 def move(x: int, y: int):
     """
@@ -226,7 +238,7 @@ def glide_to_position(x: int, y: int, time: int):
     frames = time * 60
 
     for i in range(frames):
-        wait_frame()
+        wait()
         spr.x = xstart + xdiff * (i / frames)
         spr.y = ystart + ydiff * (i / frames)
 
