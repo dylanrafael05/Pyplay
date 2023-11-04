@@ -3,6 +3,9 @@ import time
 from typing import Any
 from dataclasses import dataclass
 
+def get_current_sprite():
+    return _cur_thread().spawner
+
 def advance_frame():
     for thr in _running_threads.values():
         thr.frame = True
