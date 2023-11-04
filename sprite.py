@@ -68,18 +68,13 @@ def start(spr: Sprite = None):
             return f
         return inner
 
-def delete(spr: Sprite):
+def delete(spr: Sprite = None):
     """
     Deletes a sprite.
     """
+    spr = spr or get_current_sprite()
     all_sprites.remove(spr)
     kill_spawner(spr)
-
-def delete_self():
-    """
-    Deletes this sprite
-    """
-    delete(get_current_sprite())
 
 def change_size(factor: int):
     ''' changes the size by a specific number'''
