@@ -234,6 +234,16 @@ def change_color(r : int, g: int, b : int):
     spr = get_current_sprite()
     color = (r, g, b, 255)
     spr.color = color
+
+def ghost(alpha):
+    spr = get_current_sprite()
+    spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
+
+def show():
+    spr = get_current_sprite()
+    spr.shown()
+
+
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
