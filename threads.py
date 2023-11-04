@@ -45,6 +45,7 @@ def kill_spawner(spawner):
         _threads_by_spawner[spawner].kill()
 
 def _cur_thread():
+    if threading.current_thread().name not in _running_threads: return None
     return _running_threads[threading.current_thread().name]
 
 def thread_kill_check():
@@ -82,6 +83,11 @@ def kill_spawner(spawner):
 
     thread_kill_check()
 
+def get_spawner():
+    cth = _cur_thread()
+    if cth is not None:
+        return cth.spawner
+    return spawner
 
 def script(f):
 
@@ -93,6 +99,7 @@ def script(f):
             except ThreadKilledError:
                 pass
         
+        spawner = get_spawner()
 
         thr = Thread(
             threading.Thread(
