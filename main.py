@@ -10,34 +10,33 @@ cat_dead = Event()
 
 
 @clone_start(cat)
-@script
 def cat_clone():
 
-    get_current_sprite().x = random.randrange(0, 1000)
-    get_current_sprite().y = random.randrange(0, 1000)
+    print("START ", time.time())
 
-    cat_spawn()
+    go_to_random_position()
+    set_size(100)
+    change_color(255, 255, 255)
 
+    wait(2.5)
 
-@start(cat)
-@script
-def cat_spawn():
-
-    wait(1)
-    
     clone()
-    change_color(255, 0, 0)
 
-    broadcast(cat_dead)
+    change_color(255, 0, 0)
+    change_size(10)
 
 
 @start(cat)
-@script
-def cat_spawn2():
+def cat_spawn():
+    print('STARTTTT')
+    clone()
 
-    while True:
-        wait()
-        print(f"{time.time()}")
+
+# @start(cat)
+# def cat_spawn2():
+
+#     while True:
+#         wait()
 
 
 @on(cat_dead, cat)

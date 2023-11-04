@@ -17,17 +17,16 @@ def run():
     timer = pygame.time.Clock()
 
     for spr in all_sprites:
-        threads.spawner = spr
         for os in spr._on_start:
+            threads.spawner = spr
             os()
-            
+    
     threads.spawner = None
 
     for str in all_starts:
         str()
 
     while True:
-        advance_frame()
         scr.fill('#FFFFFF')
 
         for event in pygame.event.get():
@@ -35,6 +34,17 @@ def run():
                 case pygame.QUIT:
                     pygame.quit()
                     exit(0)
+
+        for spr in all_sprites:
+            for thread in spr._threads:
+                if thread.waiting_for_main and thread.wait_req.check():
+                    with thread.wait_for_main:
+                        thread.wait_for_main.notify()
+                    thread.waited_on_by_main = True
+                    with thread.wait_for_this:
+                        thread.wait_for_this.wait()
+                        thread.waited_on_by_main = False
+
 
         for spr in all_sprites:
             spr._draw(scr)

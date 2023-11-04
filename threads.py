@@ -9,11 +9,7 @@ def get_current_sprite():
         raise NoFoundSpriteError()
     return sp
 
-def advance_frame():
-    for thr in _running_threads.values():
-        thr.frame = True
-
-spawner = False
+spawner = None
 
 class InvalidThreadCallError(Exception):
     pass
@@ -24,25 +20,42 @@ class NoFoundSpriteError(Exception):
 class ThreadKilledError(Exception):
     pass
 
+class WaitRequest:
+    def __init__(self, amt: float = -1) -> None:
+        super().__init__()
+        self.start = time.time()
+        self.amt = amt
+    def check(self) -> bool:
+        return (time.time() - self.start) >= self.amt
+
 @dataclass
 class Thread:
     thr: threading.Thread
-    frame: bool
-    dead: bool
+    wait_for_main: threading.Condition
+    wait_for_this: threading.Condition
+    wait_req: WaitRequest
     spawner: Any
+    
+    dead: bool = False
+    waited_on_by_main: bool = False
+    waiting_for_main: bool = False
 
     def start(self):
         self.thr.start()
 
     def kill(self):
         self.dead = True
+        
+        if self.waited_on_by_main:
+            with self.wait_for_this:
+                self.wait_for_this.notify()
+
+        if self.spawner:
+            self.spawner._threads.remove(self)
+        
+        del _running_threads[threading.current_thread().name]
 
 _running_threads: dict[str, Thread] = {}
-_threads_by_spawner: dict[Any, list[Thread]] = {}
-
-def kill_spawner(spawner):
-    if spawner in _threads_by_spawner:
-        _threads_by_spawner[spawner].kill()
 
 def _cur_thread():
     if threading.current_thread().name not in _running_threads: return None
@@ -57,67 +70,70 @@ def thread_operation(name):
     if threading.current_thread().name not in _running_threads:
         raise InvalidThreadCallError(f'Cannot call {name} outside of a script!')
     
+    cth = _cur_thread()
+
+    if cth.waited_on_by_main:
+        _cur_thread().wait_for_this.notify()
+
     thread_kill_check()
 
 def wait(sec: float = -1):
     thread_operation('wait')
     
-    if sec == -1:
-        wait_frame()
-    else:
-        time.sleep(sec)
-        thread_kill_check()
+    cth = _cur_thread()
 
-def wait_frame():
-    thread_operation('wait_frame')
+    cth.wait_req = WaitRequest(sec)
 
-    while not _cur_thread().frame:
-        time.sleep(0.001)
-        
-    _cur_thread().frame = False
-
-def kill_spawner(spawner):
-    if spawner in _threads_by_spawner:
-        for thr in _threads_by_spawner[spawner]:
-            thr.kill()
-
+    with cth.wait_for_main:
+        cth.waiting_for_main = True
+        cth.wait_for_main.wait()
+    
     thread_kill_check()
 
 def get_spawner():
+    if spawner is not None:
+        return spawner
     cth = _cur_thread()
     if cth is not None:
         return cth.spawner
-    return spawner
+    return None
 
 def script(f):
 
     def inner():
 
+        # Handles threadkillederror without crash,
+        # then kills the thread.
         def f_wrap(*args, **kwargs):
+
             try:
                 f(*args, **kwargs)
             except ThreadKilledError:
                 pass
+                
+            thr.kill()
         
-        spawner = get_spawner()
+        # Create thread instance
+        global spawner
+            
+        lspawner = get_spawner()
 
         thr = Thread(
             threading.Thread(
-                name=f.__name__,
+                name=f'{f.__name__}.{time.time_ns()}',
                 target=f_wrap,
                 daemon=True
             ),
-            False,
-            False,
-            spawner
+            threading.Condition(),
+            threading.Condition(),
+            None,
+            lspawner
         )
 
-        _running_threads[f.__name__] = thr
-        if spawner: 
-            if spawner in _threads_by_spawner:
-                _threads_by_spawner[spawner].append(thr)
-            else:
-                _threads_by_spawner[spawner] = [thr]
+        lspawner._threads.append(thr)
+        _running_threads[thr.thr.name] = thr
+        
+        spawner = None
 
         thr.start()
 
