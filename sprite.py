@@ -1,6 +1,6 @@
 import random
 import pygame
-import threads.get_current_sprite
+import threads
 
 class Sprite:
 
@@ -17,7 +17,7 @@ class Sprite:
 
         self._all_costumes = Sprite._load_all_images(all_costumes)
 
-        self._on_start = lambda: None
+        self._on_start = []
 
         all_sprites.append(self)
 
@@ -57,7 +57,7 @@ def start(spr: Sprite = None):
     if spr is not None:
 
         def inner(f):
-            spr._on_start = f
+            spr._on_start.append(f)
             return f
         return inner
 
@@ -73,6 +73,15 @@ def delete(spr: Sprite):
     Deletes a sprite.
     """
     all_sprites.remove(spr)
+    threads.kill_spawner(spr)
+
+def change_size(spr: Sprite, factor: int):
+    ''' changes the size by a specific number'''
+    spr.size = (factor * 100)
+
+def percent_size(spr : Sprite, percent : int):
+    spr.size = percent
+
 
 def move(x: int, y: int):
     """
