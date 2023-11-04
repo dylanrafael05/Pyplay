@@ -9,6 +9,7 @@ class Sprite:
         self.y = 0
         self.angle = 0
         self.size = 100
+        self.color = (255, 255, 255, 255)
 
         self.costume = 0
 
@@ -39,6 +40,8 @@ class Sprite:
 
         rot_img: pygame.surface.Surface = \
             pygame.transform.rotozoom(self.image, self.angle, self.size / 100)
+
+        rot_img.fill(self.color, special_flags=pygame.BLEND_RGBA_MIN)
 
         surf.blit(
             rot_img,
@@ -152,10 +155,10 @@ def glide_to_position(x: int, y: int, time: int):
 
     spr
 
-''' def change_color(r : int, g: int, b : int):
+def change_color(r : int, g: int, b : int):
     spr = get_current_sprite()
-    color = (r, g, b)
-    spr.color = color'''
+    color = (r, g, b, 255)
+    spr.color = color
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []

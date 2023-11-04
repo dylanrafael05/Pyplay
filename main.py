@@ -14,7 +14,7 @@ cat_dead = Event()
 def cat_spawn():
 
     wait(1)
-    delete()
+    change_color(255, 0, 0)
 
     broadcast(cat_dead)
 
