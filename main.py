@@ -1,37 +1,19 @@
-import pygame
-import threading
-import time
+from pyplay import *
 
-import threads
 
-SCREEN_DIMS = 1000, 666
 
-def wait(sec):
-    time.sleep(sec)
+cat = Sprite('katana1.png')
+cat.x = 500
+cat.y = 500
 
-@threads.coroutine 
-def wow():
-    wait(1)
-    print('Hello world!')
 
-def main():
-    pygame.init()
-    scr = pygame.display.set_mode(SCREEN_DIMS)
 
-    timer = pygame.time.Clock()
+@start(cat)
+@script
+def cat_spawn():
 
-    while True:
-        scr.fill('#000000')
+    wait(10)
+    delete(cat)
 
-        for event in pygame.event.get():
-            match event.type:
-                case pygame.QUIT:
-                    pygame.quit()
-                    exit(0)
-                case pygame.KEYDOWN:
-                    wow()
 
-        timer.tick(60)
-
-if __name__ == '__main__':
-    main()
+run()
