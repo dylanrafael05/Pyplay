@@ -72,5 +72,13 @@ def delete(spr: Sprite):
     """
     all_sprites.remove(spr)
 
+def change_size(spr: Sprite, factor: int):
+    ''' changes the size by a specific number'''
+    spr.size = (factor * 100)
+
+def percent_size(spr : Sprite, percent : int):
+    spr.size = percent
+
+
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
