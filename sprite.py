@@ -74,12 +74,12 @@ def delete(spr: Sprite):
     all_sprites.remove(spr)
     threads.kill_spawner(spr)
 
-def change_size(spr: Sprite, factor: int):
+def change_size(factor: int):
     ''' changes the size by a specific number'''
-    spr.size = (factor * 100)
+    threads.get_current_sprite().size = (factor * 100)
 
-def percent_size(spr : Sprite, percent : int):
-    spr.size = percent
+def percent_size(percent : int):
+    threads.get_current_sprite().size = percent
 
 
 all_sprites: list[Sprite] = []
