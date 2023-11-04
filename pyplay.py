@@ -1,15 +1,14 @@
 import pygame
 import threading
-from threads import script
 import time
-from sprite import *
 
 import threads
 
-SCREEN_DIMS = 1000, 666
+from threads import *
+from sprite import *
+from events import *
 
-def wait(sec):
-    time.sleep(sec)
+SCREEN_DIMS = 1000, 666
 
 def run():
     pygame.init()
@@ -18,12 +17,16 @@ def run():
     timer = pygame.time.Clock()
 
     for spr in all_sprites:
-        spr._on_start()
+        threads.spawner = spr
+        for os in spr._on_start:
+            os()
+        threads.spawner = None
 
     for str in all_starts:
         str()
 
     while True:
+        advance_frame()
         scr.fill('#000000')
 
         for event in pygame.event.get():

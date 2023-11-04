@@ -1,4 +1,5 @@
 import pygame
+import threads
 
 class Sprite:
 
@@ -15,7 +16,7 @@ class Sprite:
 
         self._all_costumes = Sprite._load_all_images(all_costumes)
 
-        self._on_start = lambda: None
+        self._on_start = []
 
         all_sprites.append(self)
 
@@ -55,7 +56,7 @@ def start(spr: Sprite = None):
     if spr is not None:
 
         def inner(f):
-            spr._on_start = f
+            spr._on_start.append(f)
             return f
         return inner
 
@@ -71,6 +72,7 @@ def delete(spr: Sprite):
     Deletes a sprite.
     """
     all_sprites.remove(spr)
+    threads.kill_spawner(spr)
 
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
