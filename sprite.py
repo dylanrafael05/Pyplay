@@ -1,6 +1,6 @@
 import random
 import pygame
-from threads import get_current_sprite, wait_frame
+from threads import *
 
 class Sprite:
 
@@ -68,19 +68,20 @@ def start(spr: Sprite = None):
             return f
         return inner
 
-def delete(spr: Sprite):
+def delete(spr: Sprite = None):
     """
     Deletes a sprite.
     """
+    spr = spr or get_current_sprite()
     all_sprites.remove(spr)
-    threads.kill_spawner(spr)
+    kill_spawner(spr)
 
 def change_size(factor: int):
     ''' changes the size by a specific number'''
-    threads.get_current_sprite().size = (factor * 100)
+    get_current_sprite().size = (factor * 100)
 
 def percent_size(percent : int):
-    threads.get_current_sprite().size = percent
+    get_current_sprite().size = percent
 
 def move(x: int, y: int):
     """

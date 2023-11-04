@@ -4,13 +4,22 @@ from typing import Any
 from dataclasses import dataclass
 
 def get_current_sprite():
-    return _cur_thread().spawner
+    sp = _cur_thread().spawner
+    if sp is None:
+        raise NoFoundSpriteError()
+    return sp
 
 def advance_frame():
     for thr in _running_threads.values():
         thr.frame = True
 
 spawner = False
+
+class InvalidThreadCallError(Exception):
+    pass
+
+class NoFoundSpriteError(Exception):
+    pass
 
 class ThreadKilledError(Exception):
     pass
@@ -39,13 +48,13 @@ def _cur_thread():
     return _running_threads[threading.current_thread().name]
 
 def thread_kill_check():
-    if _cur_thread().dead:
+    cth = _cur_thread()
+    if cth is not None and cth.dead:
         raise ThreadKilledError()
 
 def thread_operation(name):
     if threading.current_thread().name not in _running_threads:
-        print(f'Cannot call {name} outside of a script!')
-        exit(-1)
+        raise InvalidThreadCallError(f'Cannot call {name} outside of a script!')
     
     thread_kill_check()
 
@@ -70,6 +79,9 @@ def kill_spawner(spawner):
     if spawner in _threads_by_spawner:
         for thr in _threads_by_spawner[spawner]:
             thr.kill()
+
+    thread_kill_check()
+
 
 def script(f):
 
@@ -98,7 +110,7 @@ def script(f):
             if spawner in _threads_by_spawner:
                 _threads_by_spawner[spawner].append(thr)
             else:
-                _threads_by_spawner[spawner] = []
+                _threads_by_spawner[spawner] = [thr]
 
         thr.start()
 
