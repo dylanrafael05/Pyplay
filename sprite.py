@@ -1,6 +1,6 @@
 import random
 import pygame
-from threads import get_current_sprite
+from threads import get_current_sprite, wait_frame
 
 class Sprite:
 
@@ -82,7 +82,6 @@ def change_size(factor: int):
 def percent_size(percent : int):
     threads.get_current_sprite().size = percent
 
-
 def move(x: int, y: int):
     """
     Moves a sprite by a given amount.
@@ -98,6 +97,18 @@ def move_to(x: int, y: int):
     spr = get_current_sprite()
     spr.x = x
     spr.y = y
+
+def move_x(x: int):
+    """
+    Moves a sprite by a given amount on the x axis.
+    """
+    get_current_sprite().x += x
+
+def move_y(y: int):
+    """
+    Moves a sprite by a given amount on the y axis.
+    """
+    get_current_sprite().y += y
 
 def rotate(angle: int):
     """
@@ -125,7 +136,18 @@ def glide_to_position(x: int, y: int, time: int):
     """
     spr = get_current_sprite()
 
-    spr
+    xstart = spr.x
+    ystart = spr.y
+
+    xdiff = x - spr.x
+    ydiff = y - spr.y
+
+    frames = time * 60
+
+    for i in range(frames):
+        wait_frame()
+        spr.x = xstart + xdiff * (i / frames)
+        spr.y = ystart + ydiff * (i / frames)
             
     
 all_sprites: list[Sprite] = []
