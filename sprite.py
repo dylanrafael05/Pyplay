@@ -224,8 +224,6 @@ def glide_to_position(x: int, y: int, time: int):
         spr.x = xstart + xdiff * (i / frames)
         spr.y = ystart + ydiff * (i / frames)
 
-    spr
-
 def is_clone():
     """
     Get if the current sprite is a clone
