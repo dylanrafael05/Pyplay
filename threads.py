@@ -90,21 +90,20 @@ def wait(sec: float = -1):
     
     thread_kill_check()
 
-def get_spawner():
-    if spawner is not None:
-        return spawner
-    cth = _cur_thread()
-    if cth is not None:
-        return cth.spawner
-    return None
-
 def script(f):
 
-    def inner():
+    def inner(*args, **kwargs):
+        
+        # Create thread instance
+        global spawner
 
+        if not spawner:
+            f(*args, **kwargs)
+            return
+    
         # Handles threadkillederror without crash,
         # then kills the thread.
-        def f_wrap(*args, **kwargs):
+        def f_wrap():
 
             try:
                 f(*args, **kwargs)
@@ -112,11 +111,6 @@ def script(f):
                 pass
                 
             thr.kill()
-        
-        # Create thread instance
-        global spawner
-            
-        lspawner = get_spawner()
 
         thr = Thread(
             threading.Thread(
@@ -127,10 +121,10 @@ def script(f):
             threading.Condition(),
             threading.Condition(),
             None,
-            lspawner
+            spawner
         )
 
-        lspawner._threads.append(thr)
+        spawner._threads.append(thr)
         _running_threads[thr.thr.name] = thr
         
         spawner = None
