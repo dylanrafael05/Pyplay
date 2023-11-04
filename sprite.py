@@ -89,6 +89,11 @@ class Sprite:
                 self.y - rot_img.get_height() / 2
             )
         )
+    
+    def _events(self, ev):
+        if (ev in self._event_map):
+            return self._event_map[ev]
+        return []
 
 
 def start(spr: Sprite = None):
