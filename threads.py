@@ -13,7 +13,7 @@ class Thread:
 
 running_threads: dict[str, Thread] = {}
 
-def coroutine(f):
+def script(f):
 
     def inner():
         thr = Thread(
