@@ -239,6 +239,11 @@ def ghost(alpha):
     spr = get_current_sprite()
     spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
 
+def show():
+    spr = get_current_sprite()
+    spr.shown()
+
+
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
