@@ -137,7 +137,6 @@ def glide_to_position(x: int, y: int, time: int):
     """
     spr = get_current_sprite()
 
-<<<<<<< Updated upstream
     xstart = spr.x
     ystart = spr.y
 
@@ -150,16 +149,13 @@ def glide_to_position(x: int, y: int, time: int):
         wait_frame()
         spr.x = xstart + xdiff * (i / frames)
         spr.y = ystart + ydiff * (i / frames)
-            
-=======
+
     spr
 
 ''' def change_color(r : int, g: int, b : int):
     spr = get_current_sprite()
     color = (r, g, b)
     spr.color = color'''
-
->>>>>>> Stashed changes
     
 all_sprites: list[Sprite] = []
 all_starts: list[object] = []
