@@ -1,6 +1,18 @@
 import pygame
+import threading
+import time
+
+import threads
 
 SCREEN_DIMS = 1000, 666
+
+def wait(sec):
+    time.sleep(sec)
+
+@threads.coroutine 
+def wow():
+    wait(1)
+    print('Hello world!')
 
 def main():
     pygame.init()
@@ -16,6 +28,8 @@ def main():
                 case pygame.QUIT:
                     pygame.quit()
                     exit(0)
+                case pygame.KEYDOWN:
+                    wow()
 
         timer.tick(60)
 
