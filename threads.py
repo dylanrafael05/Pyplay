@@ -116,8 +116,7 @@ def script(f):
         thr = Thread(
             threading.Thread(
                 name=f'{f.__name__}.{time.time_ns()}',
-                target=f_wrap,
-                daemon=True
+                target=f_wrap
             ),
             threading.Condition(),
             threading.Condition(),
