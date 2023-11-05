@@ -36,7 +36,7 @@ def broadcast(event: Event, *args, **kwargs):
 
 # Key press
 key_press_events = dict[int, Event]()
-def key_press(key: int):
+def key_press(key: int): # Event
     if (key not in key_press_events):
         key_press_events[key] = Event()
     return key_press_events[key]
@@ -48,3 +48,9 @@ def broadcast_key_press(key: int):
 
 def get_key_down(key: int):
     return pygame.key.get_pressed()[key]
+
+mouse_click_event = Event()
+def mouse_click():
+    return mouse_click_event
+def broadcast_mouse_click():
+    broadcast(mouse_click_event)
