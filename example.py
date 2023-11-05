@@ -1,8 +1,8 @@
 from pyplay import *
 
 apple = Sprite("katana1.png")
-apple._x = 500
-apple._y = 500
+apple._x_scr = 500
+apple._y_scr = 500
 
 apple_eaten = Event()
 
@@ -31,12 +31,12 @@ def apple_clone():
 
         wait()
 
+        say(f'Hello! {i}')
+
         change_color(0, 0, 255)
         change_size(10)
 
-        print('a')
         move()
-        print('b')
         clone()
 
         i += 1
@@ -46,13 +46,11 @@ def apple_clone():
 @on(key_0_press)
 def move():
     glide_to_position(0,0,1)
-    print('c')
 
 
 @start(apple)
 def apple_spawn():
-    print('STARTTTT')
     clone()
 
 
-run()
+run("Example")

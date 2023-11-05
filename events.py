@@ -1,5 +1,5 @@
 from typing import Any
-from sprite import Sprite, all_sprites
+from sprite import Sprite, _all_objects
 from threads import script
 import pygame
 
@@ -28,7 +28,7 @@ def on(event: Event, spr: Sprite = None):
 def broadcast(event: Event, *args, **kwargs):
     for e in _global_event_map[event]:
         e(*args, **kwargs)
-    for spr in all_sprites:
+    for spr in _all_objects:
         for e in spr._events(event):
             e(*args, **kwargs)
 

@@ -3,11 +3,28 @@ import time
 from typing import Any
 from dataclasses import dataclass
 
-def get_current_sprite():
-    sp = _cur_thread().spawner
-    if sp is None:
-        raise NoFoundSpriteError()
+_cur_spr_global = None
+
+def maybe_this():
+    cth = _cur_thread()
+    if not cth:
+        return _cur_spr_global
+    sp = cth.spawner
     return sp
+
+def this():
+    thr = maybe_this()
+    if thr is None:
+        raise NoFoundSpriteError()
+    return thr
+
+def assign_this_unsafe(spr):
+    global _cur_spr_global
+    cth = _cur_thread()
+    if not cth:
+        _cur_spr_global = spr   
+    else:
+        cth.spawner = spr
 
 spawner = None
 

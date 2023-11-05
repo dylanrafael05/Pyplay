@@ -4,18 +4,14 @@ import time
 import random
 
 import threads
+import basics
+import sprite
 
+from basics import *
 from threads import *
 from sprite import *
 from events import *
 from sound import *
-
-_scr: pygame.Surface
-_time: float
-_clock: pygame.time.Clock
-
-def screen_surface():
-    return _scr
 
 def stop_all():
     """
@@ -30,49 +26,29 @@ def pick_random(start: float, end: float):
     """
     return random.random() * (end - start) + start
 
-def timer():
-    """
-    Get the current time since the timer started
-    """
-    return time.time() - _time
+def run(title: str = None):
 
-
-
-def restart_timer():
-    """
-    Reset the timer
-    """
-    global _time
-    _time = time.time()
-
-def fps():
-    """
-    Get the current fps
-    """
-    return _clock.get_fps()
-
-def run():
-    global _scr, _time, _clock
+    title = title or 'PyPlay Project'
 
     pygame.init()
-    _scr = pygame.display.set_mode(SCREEN_DIMS)
+    basics._scr = pygame.display.set_mode(SCREEN_DIMS)
 
-    _time = time.time()
+    pygame.display.set_caption(title)
+    pygame.display.set_icon(pygame.image.load('python py.png'))
 
-    _clock = pygame.time.Clock()
+    basics._start_time = time.time()
+    basics._time = basics._start_time
 
-    for spr in all_sprites:
-        for os in spr._on_start:
-            threads.spawner = spr
-            os()
-    
-    threads.spawner = None
+    basics._clock = pygame.time.Clock()
 
-    for str in all_starts:
+    for spr in sprite._all_objects:
+        spr._begin()
+
+    for str in sprite._all_starts:
         str()
 
     while True:
-        _scr.fill('#FFFFFF')
+        basics._scr.fill('#D0D0D0')
 
         for event in pygame.event.get():
             match event.type:
@@ -84,7 +60,7 @@ def run():
                 case pygame.MOUSEBUTTONDOWN:
                     broadcast_mouse_click()
 
-        for spr in all_sprites:
+        for spr in sprite._all_objects:
             for thread in spr._threads:
                 if thread.waiting_for_main and thread.wait_req.check():
 
@@ -97,12 +73,12 @@ def run():
                     thread.wait_for_this.clear()
 
 
-        for spr in all_sprites:
-            spr._draw(_scr)
+        for spr in sprite._all_objects:
+            spr._draw(basics._scr)
 
         pygame.display.update()
 
-        _clock.tick(60)
+        basics._clock.tick(60)
 
 def mouse_x():
     return pygame.mouse.get_pos()[0]

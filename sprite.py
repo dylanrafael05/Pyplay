@@ -2,15 +2,10 @@ import math
 import random
 import pygame
 import threads
+import basics
 import abc
 from threads import *
-
-SCREEN_DIMS = pygame.Vector2(1000, 666)
-
-def TRANSFORM_POS(pos: pygame.Vector2) -> pygame.Vector2:
-    return (SCREEN_DIMS / 2 + pygame.Vector2(pos.x, -pos.y) * (SCREEN_DIMS.x / 480))
-def TRANSFORM_INV_POS(pos: pygame.Vector2) -> pygame.Vector2:
-    return (-SCREEN_DIMS / 2 + pygame.Vector2(pos.x, -pos.y)) * (480 / SCREEN_DIMS.x)
+from worldtransform import *
 
 MAX_SPRITES = 500
 
@@ -19,14 +14,51 @@ class InvalidGameObjectError(Exception):
 
 class GameObject(abc.ABC):
 
+    _starts: dict[type['GameObject'], list[object]] = {}
+    _clone_starts: dict[type['GameObject'], list[object]] = {}
+    _draws: dict[type['GameObject'], list[object]] = {}
+
+    @classmethod
+    def define_start(cls, f):
+        if cls not in cls._starts:
+            cls._starts[cls] = []
+        cls._starts[cls].append(f)
+    @classmethod
+    def define_clone_start(cls, f):
+        if cls not in cls._clone_starts:
+            cls._starts[cls] = []
+        cls._clone_starts[cls].append(f)
+    @classmethod
+    def define_draw(cls, f):
+        if cls not in cls._draws:
+            cls._starts[cls] = []
+        cls._draws[cls].append(f)
+
+    @classmethod 
+    def _get_starts(cls):
+        if cls not in cls._starts:
+            return []
+        return cls._starts[cls] + (cls.__base__._get_starts() if issubclass(cls.__base__, GameObject) else [])
+    @classmethod 
+    def _get_clone_starts(cls):
+        if cls not in cls._clone_starts:
+            return []
+        return cls._clone_starts[cls] + (cls.__base__._get_clone_starts() if issubclass(cls.__base__, GameObject) else [])
+    @classmethod 
+    def _get_draws(cls):
+        if cls not in cls._draws:
+            return []
+        return cls._draws[cls] + (cls.__base__.get_draws() if issubclass(cls.__base__, GameObject) else [])
+
     @property
     def pos(self) -> pygame.Vector2:
-        return TRANSFORM_INV_POS(pygame.Vector2(self._x, self._y))
+        return ScreenToWorld(pygame.Vector2(self._x_scr, self._y_scr))
 
     @pos.setter
     def pos(self, val: pygame.Vector2):
-        self._x = val.x
-        self._y = val.y
+        val = WorldToScreen(val)
+        self._x_scr = val.x
+        self._y_scr = val.y
 
     def __init__(self) -> None:
         self.angle = 0
@@ -34,16 +66,14 @@ class GameObject(abc.ABC):
         self.color = (255, 255, 255, 255)
         self.shown = True
         
-        self._x = 0
-        self._y = 0
+        self._x_scr = 0
+        self._y_scr = 0
 
-        self._on_start = []
-        self._on_clone_start = []
-        self._on_draw = []
+        self._on_start = self.__class__._get_starts()
+        self._on_clone_start = self.__class__._get_clone_starts()
+        self._on_draw = self.__class__._get_draws()
 
         self._event_map = {}
-
-        all_sprites.append(self)
 
         self._threads: list[threads.PyplayThread] = []
         
@@ -52,10 +82,17 @@ class GameObject(abc.ABC):
         self._with = None
 
         self._lock = threading.Lock()
+        
+        _all_objects.append(self)
+
+        self.dead = False
+
+        if basics.running():
+            self._begin()
 
     def _clone_from(self, other: 'GameObject') -> None:
-        self._x = other._x
-        self._y = other._y
+        self._x_scr = other._x_scr
+        self._y_scr = other._y_scr
         self.angle = other.angle
         self.size = other.size
         self.color = other.color
@@ -73,6 +110,12 @@ class GameObject(abc.ABC):
         self._event_map = {}
 
         self._is_clone = True
+
+    def _begin(self):
+        for os in self._on_start:
+            threads.spawner = self
+            os()
+        threads.spawner = None
     
     @property
     @abc.abstractmethod
@@ -98,8 +141,8 @@ class GameObject(abc.ABC):
         surf.blit(
             rot_img,
             pygame.Vector2(
-                self._x - rot_img.get_width() / 2, 
-                self._y - rot_img.get_height() / 2
+                self._x_scr - rot_img.get_width() / 2, 
+                self._y_scr - rot_img.get_height() / 2
             )
         )
 
@@ -111,17 +154,18 @@ class GameObject(abc.ABC):
             return self._event_map[ev]
         return []
         
-    def _get_aabb(self):
+    def _aabb_screen(self):
         """
-        Returns the axis-aligned bounding box of the sprite.
+        Returns the axis-aligned bounding box of the sprite in screen coordinates.
         
         (x, y, width, height)
         """
-        return (
-            (self.x - self.image.get_width() / 2) * self.size / 100,
-            (self.y - self.image.get_height() / 2) * self.size / 100,
-            self.image.get_width() * self.size / 100,
-            self.image.get_height() * self.size / 100
+        img = self.image
+        return pygame.Rect(
+            (self._x_scr - img.get_width() / 2) * self.size / 100,
+            (self._y_scr - img.get_height() / 2) * self.size / 100,
+            img.get_width() * self.size / 100,
+            img.get_height() * self.size / 100
         )
     def _set_angle(self, angle):
         if (angle < 0):
@@ -129,25 +173,25 @@ class GameObject(abc.ABC):
         self.angle = angle
 
     def __enter__(self) -> 'GameObject':
-        cth = threads._cur_thread()
-        self._with = cth.spawner
-        cth.spawner = self
+        self._with = maybe_this()
+        assign_this_unsafe(self)
         return self
     
     def __exit__(self, exception_type, exception_value, exception_traceback):
-        threads._cur_thread().spawner = self._with
+        assign_this_unsafe(self._with)
         self._with = None
 
 
 class Sprite(GameObject):
 
     def __init__(self, *all_costumes: str) -> None:
-        super().__init__()
         
         self.costume = 0
         self.shown = True
 
         self._all_costumes = Sprite._load_all_images(all_costumes)
+
+        super().__init__()
 
     def _clone_from(self, other: 'Sprite') -> None:
         super()._clone_from(other)
@@ -175,8 +219,7 @@ class Sprite(GameObject):
 class Text(GameObject):
 
     def __init__(self, font: str = "comic-sans", size = 20) -> None:
-        super().__init__()
-
+        
         if not pygame.font.get_init():
             pygame.font.init()
 
@@ -184,6 +227,8 @@ class Text(GameObject):
         self._size = size
 
         self.text = ''
+
+        super().__init__()
 
     def _clone_from(self, other: 'Text') -> None:
         super()._clone_from(other)
@@ -197,23 +242,41 @@ class Text(GameObject):
     def image(self) -> pygame.Surface:
         return self._font.render(self.text, 1, '#ffffff')
 
-def on_draw(spr: GameObject):
+def on_draw(spr: GameObject | type[GameObject]):
     """
     Defines a script to be run when a sprite is drawn.
     """
 
-    def inner(f):
-        f = script(f)
-        spr._on_draw.append(f)
-        return f
-    return inner
+    if isinstance(spr, type):
 
-def start(spr: GameObject = None):
+        def inner(f):
+            f = script(f)
+            spr.define_draw(f)
+            return f
+        return inner
+    
+    else:
+
+        def inner(f):
+            f = script(f)
+            spr._on_draw.append(f)
+            return f
+        return inner
+
+def start(spr: GameObject | type[GameObject] = None):
     """
     Defines a script to be run when a sprite is spawned.
     """
 
-    if spr is not None:
+    if isinstance(spr, type):
+
+        def inner(f):
+            f = script(f)
+            spr.define_start(f)
+            return f
+        return inner
+
+    elif spr is not None:
 
         def inner(f):
             f = script(f)
@@ -225,29 +288,39 @@ def start(spr: GameObject = None):
 
         def inner(f):
             f = script(f)
-            all_starts.append(f)
+            _all_starts.append(f)
             return f
         return inner
 
-def clone_start(spr: GameObject):
+def clone_start(spr: GameObject | type[GameObject]):
     """
     Defines a script to be run when a sprite is spawned.
     """
+    if isinstance(spr, type):
 
-    def inner(f):
-        f = script(f)
-        spr._on_clone_start.append(f)
-        return f
-    return inner
+        def inner(f):
+            f = script(f)
+            spr.define_clone_start(f)
+            return f
+        return inner
+    
+    else:
+
+        def inner(f):
+            f = script(f)
+            spr._on_clone_start.append(f)
+            return f
+        return inner
+
 
 def clone(spr: GameObject = None):
     """
     Clones a sprite.
     """
-    if len(all_sprites) > MAX_SPRITES:
+    if len(_all_objects) > MAX_SPRITES:
         return None
 
-    spr = spr or get_current_sprite()
+    spr = spr or this()
 
     clone = Sprite()
     clone._clone_from(spr)
@@ -263,135 +336,144 @@ def delete(spr: GameObject = None):
     """
     Deletes a sprite.
     """
-    spr = spr or get_current_sprite()
-    all_sprites.remove(spr)
+    spr = spr or this()
+    _all_objects.remove(spr)
     
     for thread in list(spr._threads):
         thread.mark_kill()
+
+    spr.dead = True
 
     threads.thread_kill_check()
 
 def set_size(factor: int):
     ''' changes the size by a specific number'''
-    get_current_sprite().size = factor
+    this().size = factor
 
 def change_size(factor: int):
     ''' changes the size by a specific number'''
-    get_current_sprite().size += factor
+    this().size += factor
 
 def move(x: int, y: int):
     """
     Moves a sprite by a given amount.
     """
-    spr = get_current_sprite()
-    spr.pos += TRANSFORM_POS(pygame.Vector2(x, y))
+    spr = this()
+    spr.pos += pygame.Vector2(x, y)
+
+def move_to_other(other: GameObject):
+    """
+    Moves a sprite to a given position.
+    """
+    spr = this()
+    spr.pos = other.pos
 
 def move_to(x: int, y: int):
     """
     Moves a sprite to a given position.
     """
-    spr = get_current_sprite()
-    spr.pos = TRANSFORM_POS(pygame.Vector2(x, y))
+    spr = this()
+    spr.pos = pygame.Vector2(x, y)
 
 def move_x(x: int):
     """
     Moves a sprite by a given amount on the x axis.
     """
-    get_current_sprite().x += TRANSFORM_POS(pygame.Vector2(x, 0)).x
+    this()._x_scr += WorldToScreenFactorX(x)
 
 def move_y(y: int):
     """
     Moves a sprite by a given amount on the y axis.
     """
-    get_current_sprite().y += TRANSFORM_POS(pygame.Vector2(0, y)).y
+    this()._y_scr += WorldToScreenFactorY(y)
 
 def rotate(angle: int):
     """
     Rotates a sprite by a given amount.
     """
-    get_current_sprite().angle += angle
+    this().angle += angle
 
 def rotate_to(angle: int):
     """
     Rotates a sprite to a given angle.
     """
-    get_current_sprite().angle = angle
+    this().angle = angle
 
 def go_to_random_position():
     """
     Moves a sprite to a random position on the screen.
     """
-    spr = get_current_sprite()
-    spr._x = random.randint(0, SCREEN_DIMS.x)
-    spr._y = random.randint(0, SCREEN_DIMS.y)
+    spr = this()
+    spr._x_scr = random.randint(0, SCREEN_DIMS.x)
+    spr._y_scr = random.randint(0, SCREEN_DIMS.y)
 
 def glide_to_position(x: int, y: int, time: int):
     """
     Moves a sprite to a given position over a given time.
     """
-    spr = get_current_sprite()
+    spr = this()
 
-    x, y = TRANSFORM_POS(pygame.Vector2(x, y))
+    x, y = WorldToScreen(pygame.Vector2(x, y))
 
-    xstart = spr._x
-    ystart = spr._y
+    xstart = spr._x_scr
+    ystart = spr._y_scr
 
-    xdiff = x - spr._x
-    ydiff = y - spr._y
+    xdiff = x - spr._x_scr
+    ydiff = y - spr._y_scr
 
-    frames = int(time * 60)
+    start = basics.timer_since_start()
 
-    for i in range(frames):
+    while basics.timer_since_start() - start < time:
         wait()
-        spr._x = xstart + xdiff * ((i + 1) / frames)
-        spr._y = ystart + ydiff * ((i + 1) / frames)
+        spr._x_scr = xstart + xdiff * ((basics.timer_since_start() - start) / time)
+        spr._y_scr = ystart + ydiff * ((basics.timer_since_start() - start) / time)
 
-    spr._x = x
-    spr._y = y
+    spr._x_scr = x
+    spr._y_scr = y
 
 def move_forward(distance: int):
     """
     Moves a sprite forward by a given distance.
     """
-    spr = get_current_sprite()
+    spr = this()
 
-    spr._x += distance * math.cos(math.radians(spr.angle))
-    spr._y += distance * math.sin(math.radians(spr.angle))
+    spr._x_scr += distance * math.cos(math.radians(spr.angle))
+    spr._y_scr += distance * math.sin(math.radians(spr.angle))
 
 def move_backward(distance: int):
     """
     Moves a sprite backward by a given distance.
     """
-    spr = get_current_sprite()
+    spr = this()
 
-    spr._x -= distance * math.cos(math.radians(spr.angle))
-    spr._y -= distance * math.sin(math.radians(spr.angle))
+    spr._x_scr -= distance * math.cos(math.radians(spr.angle))
+    spr._y_scr -= distance * math.sin(math.radians(spr.angle))
 
 def turn_left(angle: int):
     """
     Turns a sprite left by a given angle.
     """
-    spr = get_current_sprite()
+    spr = this()
     spr.angle -= angle
 
 def turn_right(angle: int):
     """
     Turns a sprite right by a given angle.
     """
-    spr = get_current_sprite()
+    spr = this()
     spr.angle += angle
 
 def is_clone():
     """
     Get if the current sprite is a clone
     """
-    return get_current_sprite()._is_clone
+    return this()._is_clone
 
 def change_color(r : int, g: int, b : int):
     """
     Change the color tint of this sprite
     """
-    spr = get_current_sprite()
+    spr = this()
     color = (r, g, b, 255)
     spr.color = color
 
@@ -399,29 +481,29 @@ def ghost(alpha):
     """
     Change the ghost (alpha) of this sprite
     """
-    spr = get_current_sprite()
+    spr = this()
     spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
 
 def show():
     """
     Show this sprite
     """
-    spr = get_current_sprite()
+    spr = this()
     spr.shown = True
 
 def hide():
     """
     Hide this sprite
     """
-    spr = get_current_sprite()
+    spr = this()
     spr.shown = False
 
 def is_touching(spr: Sprite):
     """
     Returns if the current sprite is touching another sprite.
     """
-    spr1 = get_current_sprite()._get_aabb()
-    spr2 = spr._get_aabb()
+    spr1 = this()._aabb_screen()
+    spr2 = spr._aabb_screen()
 
     return spr1[0] - spr1[2] / 2 < spr2[0] + spr2[2] / 2 and \
         spr1[0] + spr1[2] / 2 > spr2[0] - spr2[2] / 2 and \
@@ -432,34 +514,34 @@ def is_touching_edge():
     """
     Returns if the current sprite is touching the edge of the screen.
     """
-    spr = get_current_sprite()._get_aabb()
+    spr = this()._aabb_screen()
 
-    return spr[0] < 0 or spr[0] + spr[2] > 1000 or \
-        spr[1] < 0 or spr[1] + spr[3] > 666
+    return spr[0] < 0 or spr[0] + spr[2] > SCREEN_DIMS.x or \
+        spr[1] < 0 or spr[1] + spr[3] > SCREEN_DIMS.y
 
 
 def bounce_if_on_edge():
     """
     Bounces the sprite if it is touching the edge of the screen.
     """
-    spr = get_current_sprite()
-    spr_aabb = spr._get_aabb()
+    spr = this()
+    spr_aabb = spr._aabb_screen()
 
     print(spr.angle)
 
     width, height = pygame.display.get_surface().get_size()
 
     if spr_aabb[0] - spr_aabb[2] / 2 < 0:
-        spr.x = (spr_aabb[2] / 2) * 2
+        spr._x_scr = (spr_aabb[2] / 2) * 2
         spr.angle = 180 - spr.angle
     elif spr_aabb[0] + spr_aabb[2] / 2 > width:
-        spr.x = width - (spr_aabb[2] / 2) * 2
+        spr._x_scr = width - (spr_aabb[2] / 2) * 2
         spr.angle = 180 - spr.angle
     if spr_aabb[1] - spr_aabb[3] / 2 < 0:
-        spr.y = (spr_aabb[3] / 2) * 2
+        spr._y_scr = (spr_aabb[3] / 2) * 2
         spr.angle = 360 - spr.angle
     elif spr_aabb[1] + spr_aabb[3] / 2 > height:
-        spr.y = height - (spr_aabb[3] / 2) * 2
+        spr._y_scr = height - (spr_aabb[3] / 2) * 2
         spr.angle = 360 - spr.angle
     
     if (spr.angle < 0):
@@ -470,7 +552,7 @@ def next_costume():
     """
     Switch this sprite to the next costume
     """
-    spr = get_current_sprite()
+    spr = this()
     if not isinstance(spr, Sprite):
         raise InvalidGameObjectError('Cannot call next_costume with non-Sprite')
     spr.costume = (spr.costume + 1) % len(spr._all_costumes)
@@ -479,11 +561,60 @@ def set_text(*args):
     """
     Set the text of the given sprite
     """
-    spr = get_current_sprite()
+    spr = this()
     if not isinstance(spr, Text):
         raise InvalidGameObjectError('Cannot call set_text with non-Text')
     spr.text = ' '.join(str(x) for x in args)
 
+
+def this() -> GameObject:
+    return threads.this()
+
+
+class SayText(Text):
+
+    def __init__(self, follow: GameObject, life: float, font: str = "comic-sans", size=20) -> None:
+        self.follow = follow
+        self.life = life
+        super().__init__(font, size)
+
+    def _draw(self, surf: pygame.Surface):
+        pygame.draw.rect(surf, '#ffffff', self._aabb_screen().inflate(10, 10), border_radius=10)
+        super()._draw(surf)
+
+
+@start(SayText)
+def _say_text_start():
+
+    self: SayText = this()
+
+    show()
+    change_color(0, 0, 0)
+
+    start = basics.timer_since_start()
+
+    while basics.timer_since_start() - start < self.life and not self.follow.dead:
+        move_to(self.follow.pos.x, self.follow.pos.y + ScreenToWorldFactorY(-self.follow._aabb_screen().h / 2 - 10))
+        wait()
     
-all_sprites: list[Sprite] = []
-all_starts: list[object] = []
+    delete()
+
+
+def say(txt: str, time: float = None):
+    """
+    Display text above the current sprite
+    """
+    no_time = time is None
+    time = time or float('inf')
+
+    s = SayText(this(), time)
+    s.text = txt
+
+    if not no_time:
+        wait(time)
+
+
+
+    
+_all_objects: list[GameObject] = []
+_all_starts: list[object] = []
