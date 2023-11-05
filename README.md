@@ -14,4 +14,4 @@ from pyplay import *
 run('Your app name')
 ```
 
-See [the snake example](examples/snake/snake.py) for a more fleshed-out example!
+See [the snake example](snake.py) for a more fleshed-out example!
