@@ -162,8 +162,8 @@ class GameObject(abc.ABC):
         """
         img = self.image
         return pygame.Rect(
-            (self._x_scr - img.get_width() / 2) * self.size / 100,
-            (self._y_scr - img.get_height() / 2) * self.size / 100,
+            (self._x_scr - img.get_width() / 2 * self.size / 100),
+            (self._y_scr - img.get_height() / 2 * self.size / 100),
             img.get_width() * self.size / 100,
             img.get_height() * self.size / 100
         )
@@ -505,10 +505,7 @@ def is_touching(spr: Sprite):
     spr1 = this()._aabb_screen()
     spr2 = spr._aabb_screen()
 
-    return spr1[0] - spr1[2] / 2 < spr2[0] + spr2[2] / 2 and \
-        spr1[0] + spr1[2] / 2 > spr2[0] - spr2[2] / 2 and \
-        spr1[1] - spr1[3] / 2 < spr2[1] + spr2[3] / 2 and \
-        spr1[1] + spr1[3] / 2 > spr2[1] - spr2[3] / 2
+    return spr1.colliderect(spr2)
 
 def is_touching_edge():
     """
