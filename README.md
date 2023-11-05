@@ -8,10 +8,16 @@ To use PyPlay, copy its source files into your project directory and use the fol
 # add pyplay's libraries
 from pyplay import *
 
-# add your code here!
+# add a sprite!
+my_sprite = Sprite("image.png")
 
-# run your add
-run('Your app name')
+# write a start function!
+@start(my_sprite)
+def on_start():
+    pass
+
+# run your app!
+run("My PyPlay Game")
 ```
 
 See [the snake example](snake.py) for a more fleshed-out example!
