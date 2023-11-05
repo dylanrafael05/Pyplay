@@ -6,6 +6,9 @@ cat.x = 500
 cat.y = 500
 
 
+meow = Sound('meow.ogg')
+
+
 cat_dead = Event()
 
 @script
@@ -19,6 +22,11 @@ def cat_clone():
     print("START ", time.time())
 
     x()
+
+    with cat:
+        move(10, 10)
+
+    play_sound(meow)
 
     go_to_random_position()
     set_size(100)
@@ -46,6 +54,7 @@ def cat_spawn():
 
 
 @on(cat_dead, cat)
+@on(key_press(pygame.K_0), cat)
 def cat_is_dead():
     print("noooooo!")
 

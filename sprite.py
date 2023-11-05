@@ -2,24 +2,23 @@ import math
 import random
 import pygame
 import threads
+import abc
 from threads import *
 
 MAX_SPRITES = 500
 
-class Sprite:
+class InvalidGameObjectError(Exception):
+    pass
 
-    def __init__(self, *all_costumes: str) -> None:
+class GameObject(abc.ABC):
+
+    def __init__(self) -> None:
         self.x = 0
         self.y = 0
         self.angle = 0
         self.size = 100
         self.color = (255, 255, 255, 255)
-
-        self.costume = 0
-
         self.shown = True
-
-        self._all_costumes = Sprite._load_all_images(all_costumes)
 
         self._on_start = []
         self._on_clone_start = []
@@ -28,22 +27,19 @@ class Sprite:
 
         all_sprites.append(self)
 
+        self._threads: list[threads.Thread] = []
+        
         self._is_clone = False
 
-        self._threads: list[threads.Thread] = []
+        self._with = None
 
-    def _clone_from(self, other: 'Sprite') -> None:
+    def _clone_from(self, other: 'GameObject') -> None:
         self.x = other.x
         self.y = other.y
         self.angle = other.angle
         self.size = other.size
         self.color = other.color
-
         self.costume = other.costume
-
-        self.shown = other.shown
-
-        self._all_costumes = other._all_costumes
 
         if not other._is_clone:
             self._on_start = other._on_clone_start
@@ -54,30 +50,18 @@ class Sprite:
 
         self._event_map = {}
 
-        all_sprites.append(self)
-
         self._is_clone = True
-
-    @staticmethod
-    def _load_all_images(filenames: list[str]) -> list[pygame.surface.Surface]:
-
-        out = []
-
-        for filename in filenames:
-            out.append(pygame.image.load(filename))
-        
-        return out
     
     @property
+    @abc.abstractmethod
     def image(self) -> pygame.surface.Surface:
-        return self._all_costumes[self.costume] 
+        ...
     
     def _add_event(self, ev, f):
         if ev in self._event_map:
             self._event_map[ev].append(f)
         else:
             self._event_map[ev] = [f]
-
 
     def _draw(self, surf: pygame.surface.Surface):
 
@@ -101,9 +85,77 @@ class Sprite:
         if (ev in self._event_map):
             return self._event_map[ev]
         return []
+    
+    def __enter__(self) -> 'GameObject':
+        cth = threads._cur_thread()
+        self._with = cth.spawner
+        cth.spawner = self
+        return self
+    
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        threads._cur_thread().spawner = self._with
+        self._with = None
 
 
-def start(spr: Sprite = None):
+class Sprite(GameObject):
+
+    def __init__(self, *all_costumes: str) -> None:
+        super().__init__()
+        
+        self.costume = 0
+        self.shown = True
+
+        self._all_costumes = Sprite._load_all_images(all_costumes)
+
+    def _clone_from(self, other: 'Sprite') -> None:
+        super()._clone_from(other)
+
+        self.costume = other.costume
+        self.shown = other.shown
+
+        self._all_costumes = other._all_costumes
+
+    @staticmethod
+    def _load_all_images(filenames: list[str]) -> list[pygame.surface.Surface]:
+
+        out = []
+
+        for filename in filenames:
+            out.append(pygame.image.load(filename))
+        
+        return out
+    
+    @property
+    def image(self) -> pygame.surface.Surface:
+        return self._all_costumes[self.costume] 
+
+
+class Text(GameObject):
+
+    def __init__(self, font: str = "comic-sans", size = 20) -> None:
+        super().__init__()
+
+        if pygame.font.get_init():
+            pygame.font.init()
+
+        self._font = pygame.font.Font(font, size)
+        self._size = size
+
+        self.text = ''
+
+    def _clone_from(self, other: 'Text') -> None:
+        super()._clone_from(other)
+
+        self._font = other._font
+        self._size = other._size
+
+        self.text = other.text
+
+    def image(self) -> pygame.Surface:
+        return self._font.render(self.text, 1, '#ffffff', '#00000000')
+
+
+def start(spr: GameObject = None):
     """
     Defines a script to be run when a sprite is spawned.
     """
@@ -124,7 +176,7 @@ def start(spr: Sprite = None):
             return f
         return inner
 
-def clone_start(spr: Sprite):
+def clone_start(spr: GameObject):
     """
     Defines a script to be run when a sprite is spawned.
     """
@@ -135,7 +187,7 @@ def clone_start(spr: Sprite):
         return f
     return inner
 
-def clone(spr: Sprite = None):
+def clone(spr: GameObject = None):
     """
     Clones a sprite.
     """
@@ -154,7 +206,7 @@ def clone(spr: Sprite = None):
     
     return clone
 
-def delete(spr: Sprite = None):
+def delete(spr: GameObject = None):
     """
     Deletes a sprite.
     """
@@ -308,6 +360,23 @@ def hide():
     spr = get_current_sprite()
     spr.shown = False
 
+def next_costume():
+    """
+    Switch this sprite to the next costume
+    """
+    spr = get_current_sprite()
+    if not isinstance(spr, Sprite):
+        raise InvalidGameObjectError('Cannot call next_costume with non-Sprite')
+    spr.costume = (spr.costume + 1) % len(spr._all_costumes)
+
+def set_text(txt: str):
+    """
+    Set the text of the given sprite
+    """
+    spr = get_current_sprite()
+    if not isinstance(spr, Text):
+        raise InvalidGameObjectError('Cannot call set_text with non-Text')
+    spr.text = txt
 
     
 all_sprites: list[Sprite] = []
