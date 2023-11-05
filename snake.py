@@ -14,7 +14,7 @@ score = 0
 def snake_start():
     move_to(0, 0)
     change_size(100)
-    this().speed = 1
+    this().speed = 2
     while True:
         move_forward(this().speed)
         if is_touching_edge():
@@ -39,10 +39,12 @@ def turn_left():
 
 @on(lose)
 def reset_game():
+    global score
     print("you lose! Score: " + str(score))
+    score = 0
     move_to(0, 0)
     rotate_to(0)
-    snake.speed = 1
+    snake.speed = 2
     say("Score: " + str(score))
 
 @on(eat_apple, snake)
