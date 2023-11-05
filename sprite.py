@@ -123,7 +123,6 @@ def start(spr: Sprite = None):
             all_starts.append(f)
             return f
         return inner
-    
 
 def clone_start(spr: Sprite):
     """
@@ -281,17 +280,33 @@ def is_clone():
     return get_current_sprite()._is_clone
 
 def change_color(r : int, g: int, b : int):
+    """
+    Change the color tint of this sprite
+    """
     spr = get_current_sprite()
     color = (r, g, b, 255)
     spr.color = color
 
 def ghost(alpha):
+    """
+    Change the ghost (alpha) of this sprite
+    """
     spr = get_current_sprite()
     spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
 
 def show():
+    """
+    Show this sprite
+    """
     spr = get_current_sprite()
-    spr.shown()
+    spr.shown = True
+
+def hide():
+    """
+    Hide this sprite
+    """
+    spr = get_current_sprite()
+    spr.shown = False
 
 
     

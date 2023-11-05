@@ -8,11 +8,17 @@ cat.y = 500
 
 cat_dead = Event()
 
+@script
+def x():
+    wait(1)
+
 
 @clone_start(cat)
 def cat_clone():
 
     print("START ", time.time())
+
+    x()
 
     go_to_random_position()
     set_size(100)

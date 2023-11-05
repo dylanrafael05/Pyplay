@@ -73,7 +73,8 @@ def thread_operation(name):
     cth = _cur_thread()
 
     if cth.waited_on_by_main:
-        _cur_thread().wait_for_this.notify()
+        with cth.wait_for_this:
+            cth.wait_for_this.notify()
 
     thread_kill_check()
 
