@@ -22,7 +22,7 @@ def stop_all():
     exit()
 
 def pick_random(start: float, end: float):
-    ...
+    return random.randrange(start, end)
 
 
 
