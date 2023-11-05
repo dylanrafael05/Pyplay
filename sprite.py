@@ -285,7 +285,7 @@ def change_color(r : int, g: int, b : int):
     color = (r, g, b, 255)
     spr.color = color
 
-def ghost(alpha):
+def ghost(alpha: int):
     spr = get_current_sprite()
     spr.color = spr.color[0:3] + (255 - (alpha/100)*255,)
 

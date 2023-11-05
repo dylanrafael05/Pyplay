@@ -3,45 +3,30 @@ from pyplay import *
 
 cat = Sprite('python py.png')
 cat.x = 500
-cat.y = 500
+cat.y = 333
+
+cat_x = Sprite('python py.png')
+cat_y = Sprite('python py.png')
 
 
 cat_dead = Event()
 
-
-@clone_start(cat)
-def cat_clone():
-
-    print("START ", time.time())
-
-    go_to_random_position()
-    set_size(100)
-    change_color(255, 255, 255)
-
-    wait(2.5)
-
-    clone()
-
-    change_color(255, 0, 0)
-    change_size(10)
-
-
 @start(cat)
-def cat_spawn():
-    print('STARTTTT')
-    clone()
+def cat_start():
+    while True:
+        move_to(mouse_x(), mouse_y())
+        wait()
 
+@start(cat_x)
+def start_x():
+    while True:
+        move_to(mouse_x(), 100)
+        wait()
 
-# @start(cat)
-# def cat_spawn2():
-
-#     while True:
-#         wait()
-
-
-@on(cat_dead, cat)
-def cat_is_dead():
-    print("noooooo!")
-
+@start(cat_y)
+def start_y():
+    while True:
+        move_to(100, mouse_y())
+        wait()
 
 run()

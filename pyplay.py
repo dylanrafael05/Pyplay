@@ -37,6 +37,8 @@ def run():
                     exit(0)
                 case pygame.KEYDOWN:
                     broadcast_key_press(event.key)
+                case pygame.MOUSEBUTTONDOWN:
+                    broadcast_mouse_click()
 
         for spr in all_sprites:
             for thread in spr._threads:
@@ -55,3 +57,10 @@ def run():
         pygame.display.update()
 
         timer.tick(60)
+
+def mouse_x():
+    return pygame.mouse.get_pos()[0]
+def mouse_y():
+    return pygame.mouse.get_pos()[1]
+
+get_mouse_pos = pygame.mouse.get_pos
