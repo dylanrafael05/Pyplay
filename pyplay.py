@@ -10,10 +10,9 @@ from sprite import *
 from events import *
 from sound import *
 
-SCREEN_DIMS = 1000, 666
-
 _scr: pygame.Surface
 _time: float
+_clock: pygame.time.Clock
 
 def screen_surface():
     return _scr
@@ -37,6 +36,8 @@ def timer():
     """
     return time.time() - _time
 
+
+
 def restart_timer():
     """
     Reset the timer
@@ -44,15 +45,21 @@ def restart_timer():
     global _time
     _time = time.time()
 
+def fps():
+    """
+    Get the current fps
+    """
+    return _clock.get_fps()
+
 def run():
-    global _scr, _time
+    global _scr, _time, _clock
 
     pygame.init()
     _scr = pygame.display.set_mode(SCREEN_DIMS)
 
     _time = time.time()
 
-    timer = pygame.time.Clock()
+    _clock = pygame.time.Clock()
 
     for spr in all_sprites:
         for os in spr._on_start:
@@ -80,12 +87,14 @@ def run():
         for spr in all_sprites:
             for thread in spr._threads:
                 if thread.waiting_for_main and thread.wait_req.check():
-                    with thread.wait_for_main:
-                        thread.wait_for_main.notify()
+
+                    thread.wait_for_main.set()
+                    thread.waiting_for_main = False
+
                     thread.waited_on_by_main = True
-                    with thread.wait_for_this:
-                        thread.wait_for_this.wait()
-                        thread.waited_on_by_main = False
+                    if not thread.wait_for_this.wait(1):
+                        print('lockup.')
+                    thread.wait_for_this.clear()
 
 
         for spr in all_sprites:
@@ -93,7 +102,7 @@ def run():
 
         pygame.display.update()
 
-        timer.tick(60)
+        _clock.tick(60)
 
 def mouse_x():
     return pygame.mouse.get_pos()[0]

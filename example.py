@@ -1,36 +1,52 @@
 from pyplay import *
 
 apple = Sprite("katana1.png")
-apple.x = 500
-apple.y = 500
+apple._x = 500
+apple._y = 500
 
 apple_eaten = Event()
+
+
+sus = Text()
+
+@start(sus)
+def sus_start():
+    move_to(0, 0)
+    change_color(0, 0, 0)
+
+    while True:
+        set_text(str(fps()))
+        wait()
+
 @clone_start(apple)
 def apple_clone():
 
-    print("START ", time.time())
     i = 0
 
-    while i < 5:
-
-        wait(.1)
+    while i < 2:
 
         go_to_random_position()
         set_size(100)
         change_color(0, 255, 0)
 
+        wait()
+
         change_color(0, 0, 255)
         change_size(10)
 
+        print('a')
         move()
+        print('b')
         clone()
 
         i += 1
 
-@script
+    delete()
+
+@on(key_0_press)
 def move():
-    print("moved")
-    glide_to_position(300,400,5)
+    glide_to_position(0,0,1)
+    print('c')
 
 
 @start(apple)

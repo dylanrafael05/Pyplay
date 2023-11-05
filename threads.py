@@ -28,34 +28,53 @@ class WaitRequest:
     def check(self) -> bool:
         return (time.time() - self.start) >= self.amt
 
-@dataclass
-class Thread:
-    thr: threading.Thread
-    wait_for_main: threading.Condition
-    wait_for_this: threading.Condition
-    wait_req: WaitRequest
-    spawner: Any
-    
-    dead: bool = False
-    waited_on_by_main: bool = False
-    waiting_for_main: bool = False
 
-    def start(self):
-        self.thr.start()
+class PyplayThread(threading.Thread):
+    def __init__(self, f, spawner):
+        super().__init__(
+            name = f'{f.__name__}+{time.time_ns()}',
+            daemon = True
+        )
+
+        self._fn = f
+
+        self.wait_for_main = threading.Event()
+        self.wait_for_this = threading.Event()
+        self.wait_req: WaitRequest = None
+        self.spawner = spawner
+
+        self.dead = False
+        self.waited_on_by_main = False
+        self.waiting_for_main = False
+
+    def run(self):
+        
+        try:
+            self._fn()
+        except ThreadKilledError:
+            pass
+            
+        self.kill()
+
+    def mark_kill(self):
+
+        self.dead = True
 
     def kill(self):
-        self.dead = True
-        
+
+        self.mark_kill()
+
         if self.waited_on_by_main:
-            with self.wait_for_this:
-                self.wait_for_this.notify()
+            self.wait_for_this.set()
 
         if self.spawner:
-            self.spawner._threads.remove(self)
+            with self.spawner._lock:
+                self.spawner._threads.remove(self)
         
         del _running_threads[threading.current_thread().name]
 
-_running_threads: dict[str, Thread] = {}
+
+_running_threads: dict[str, PyplayThread] = {}
 
 def _cur_thread():
     if threading.current_thread().name not in _running_threads: return None
@@ -73,8 +92,7 @@ def thread_operation(name):
     cth = _cur_thread()
 
     if cth.waited_on_by_main:
-        with cth.wait_for_this:
-            cth.wait_for_this.notify()
+        cth.wait_for_this.set()
 
     thread_kill_check()
 
@@ -85,49 +103,30 @@ def wait(sec: float = -1):
 
     cth.wait_req = WaitRequest(sec)
 
-    with cth.wait_for_main:
-        cth.waiting_for_main = True
-        cth.wait_for_main.wait()
+    cth.waiting_for_main = True
+    cth.wait_for_main.wait()
+    cth.wait_for_main.clear()
     
     thread_kill_check()
 
 def script(f):
 
-    def inner(*args, **kwargs):
+    def inner():
         
         # Create thread instance
         global spawner
-
-        if not spawner:
-            f(*args, **kwargs)
-            return
-    
-        # Handles threadkillederror without crash,
-        # then kills the thread.
-        def f_wrap():
-
-            try:
-                f(*args, **kwargs)
-            except ThreadKilledError:
-                pass
-                
-            thr.kill()
-
-        thr = Thread(
-            threading.Thread(
-                name=f'{f.__name__}.{time.time_ns()}',
-                target=f_wrap
-            ),
-            threading.Condition(),
-            threading.Condition(),
-            None,
-            spawner
-        )
-
-        spawner._threads.append(thr)
-        _running_threads[thr.thr.name] = thr
+        spwner = spawner
         
-        spawner = None
+        if spwner is None:
+            f()
+            return
+
+        thr = PyplayThread(f, spwner)
+
+        spwner._threads.append(thr)
+        _running_threads[thr.name] = thr
+        
+        spwner = None
 
         thr.start()
 

@@ -5,6 +5,13 @@ import threads
 import abc
 from threads import *
 
+SCREEN_DIMS = pygame.Vector2(1000, 666)
+
+def TRANSFORM_POS(pos: pygame.Vector2) -> pygame.Vector2:
+    return (SCREEN_DIMS / 2 + pygame.Vector2(pos.x, -pos.y) * (SCREEN_DIMS.x / 480))
+def TRANSFORM_INV_POS(pos: pygame.Vector2) -> pygame.Vector2:
+    return (-SCREEN_DIMS / 2 + pygame.Vector2(pos.x, -pos.y)) * (480 / SCREEN_DIMS.x)
+
 MAX_SPRITES = 500
 
 class InvalidGameObjectError(Exception):
@@ -12,30 +19,43 @@ class InvalidGameObjectError(Exception):
 
 class GameObject(abc.ABC):
 
+    @property
+    def pos(self) -> pygame.Vector2:
+        return TRANSFORM_INV_POS(pygame.Vector2(self._x, self._y))
+
+    @pos.setter
+    def pos(self, val: pygame.Vector2):
+        self._x = val.x
+        self._y = val.y
+
     def __init__(self) -> None:
-        self.x = 0
-        self.y = 0
         self.angle = 0
         self.size = 100
         self.color = (255, 255, 255, 255)
         self.shown = True
+        
+        self._x = 0
+        self._y = 0
 
         self._on_start = []
         self._on_clone_start = []
+        self._on_draw = []
 
         self._event_map = {}
 
         all_sprites.append(self)
 
-        self._threads: list[threads.Thread] = []
+        self._threads: list[threads.PyplayThread] = []
         
         self._is_clone = False
 
         self._with = None
 
+        self._lock = threading.Lock()
+
     def _clone_from(self, other: 'GameObject') -> None:
-        self.x = other.x
-        self.y = other.y
+        self._x = other._x
+        self._y = other._y
         self.angle = other.angle
         self.size = other.size
         self.color = other.color
@@ -44,9 +64,11 @@ class GameObject(abc.ABC):
         if not other._is_clone:
             self._on_start = other._on_clone_start
             self._on_clone_start = []
+            self._on_draw = other._on_draw
         else:
             self._on_start = other._on_start
             self._on_clone_start = other._on_clone_start
+            self._on_draw = other._on_draw
 
         self._event_map = {}
 
@@ -76,10 +98,13 @@ class GameObject(abc.ABC):
         surf.blit(
             rot_img,
             pygame.Vector2(
-                self.x - rot_img.get_width() / 2, 
-                self.y - rot_img.get_height() / 2
+                self._x - rot_img.get_width() / 2, 
+                self._y - rot_img.get_height() / 2
             )
         )
+
+        for draw in self._on_draw:
+            draw()
     
     def _events(self, ev):
         if (ev in self._event_map):
@@ -135,10 +160,10 @@ class Text(GameObject):
     def __init__(self, font: str = "comic-sans", size = 20) -> None:
         super().__init__()
 
-        if pygame.font.get_init():
+        if not pygame.font.get_init():
             pygame.font.init()
 
-        self._font = pygame.font.Font(font, size)
+        self._font = pygame.font.SysFont(font, size)
         self._size = size
 
         self.text = ''
@@ -151,9 +176,20 @@ class Text(GameObject):
 
         self.text = other.text
 
+    @property
     def image(self) -> pygame.Surface:
-        return self._font.render(self.text, 1, '#ffffff', '#00000000')
+        return self._font.render(self.text, 1, '#ffffff')
 
+def on_draw(spr: GameObject):
+    """
+    Defines a script to be run when a sprite is drawn.
+    """
+
+    def inner(f):
+        f = script(f)
+        spr._on_draw.append(f)
+        return f
+    return inner
 
 def start(spr: GameObject = None):
     """
@@ -213,8 +249,8 @@ def delete(spr: GameObject = None):
     spr = spr or get_current_sprite()
     all_sprites.remove(spr)
     
-    for thread in spr._threads:
-        thread.kill()
+    for thread in list(spr._threads):
+        thread.mark_kill()
 
     threads.thread_kill_check()
 
@@ -231,28 +267,26 @@ def move(x: int, y: int):
     Moves a sprite by a given amount.
     """
     spr = get_current_sprite()
-    spr.x += x
-    spr.y += y
+    spr.pos += TRANSFORM_POS(pygame.Vector2(x, y))
 
 def move_to(x: int, y: int):
     """
     Moves a sprite to a given position.
     """
     spr = get_current_sprite()
-    spr.x = x
-    spr.y = y
+    spr.pos = TRANSFORM_POS(pygame.Vector2(x, y))
 
 def move_x(x: int):
     """
     Moves a sprite by a given amount on the x axis.
     """
-    get_current_sprite().x += x
+    get_current_sprite().x += TRANSFORM_POS(pygame.Vector2(x, 0)).x
 
 def move_y(y: int):
     """
     Moves a sprite by a given amount on the y axis.
     """
-    get_current_sprite().y += y
+    get_current_sprite().y += TRANSFORM_POS(pygame.Vector2(0, y)).y
 
 def rotate(angle: int):
     """
@@ -271,8 +305,8 @@ def go_to_random_position():
     Moves a sprite to a random position on the screen.
     """
     spr = get_current_sprite()
-    spr.x = random.randint(0, 1000)
-    spr.y = random.randint(0, 666)
+    spr._x = random.randint(0, SCREEN_DIMS.x)
+    spr._y = random.randint(0, SCREEN_DIMS.y)
 
 def glide_to_position(x: int, y: int, time: int):
     """
@@ -280,18 +314,23 @@ def glide_to_position(x: int, y: int, time: int):
     """
     spr = get_current_sprite()
 
-    xstart = spr.x
-    ystart = spr.y
+    x, y = TRANSFORM_POS(pygame.Vector2(x, y))
 
-    xdiff = x - spr.x
-    ydiff = y - spr.y
+    xstart = spr._x
+    ystart = spr._y
 
-    frames = time * 60
+    xdiff = x - spr._x
+    ydiff = y - spr._y
+
+    frames = int(time * 60)
 
     for i in range(frames):
         wait()
-        spr.x = xstart + xdiff * (i / frames)
-        spr.y = ystart + ydiff * (i / frames)
+        spr._x = xstart + xdiff * ((i + 1) / frames)
+        spr._y = ystart + ydiff * ((i + 1) / frames)
+
+    spr._x = x
+    spr._y = y
 
 def move_forward(distance: int):
     """
@@ -299,8 +338,8 @@ def move_forward(distance: int):
     """
     spr = get_current_sprite()
 
-    spr.x += distance * math.cos(math.radians(spr.angle))
-    spr.y += distance * math.sin(math.radians(spr.angle))
+    spr._x += distance * math.cos(math.radians(spr.angle))
+    spr._y += distance * math.sin(math.radians(spr.angle))
 
 def move_backward(distance: int):
     """
@@ -308,8 +347,8 @@ def move_backward(distance: int):
     """
     spr = get_current_sprite()
 
-    spr.x -= distance * math.cos(math.radians(spr.angle))
-    spr.y -= distance * math.sin(math.radians(spr.angle))
+    spr._x -= distance * math.cos(math.radians(spr.angle))
+    spr._y -= distance * math.sin(math.radians(spr.angle))
 
 def turn_left(angle: int):
     """
@@ -369,14 +408,14 @@ def next_costume():
         raise InvalidGameObjectError('Cannot call next_costume with non-Sprite')
     spr.costume = (spr.costume + 1) % len(spr._all_costumes)
 
-def set_text(txt: str):
+def set_text(*args):
     """
     Set the text of the given sprite
     """
     spr = get_current_sprite()
     if not isinstance(spr, Text):
         raise InvalidGameObjectError('Cannot call set_text with non-Text')
-    spr.text = txt
+    spr.text = ' '.join(str(x) for x in args)
 
     
 all_sprites: list[Sprite] = []

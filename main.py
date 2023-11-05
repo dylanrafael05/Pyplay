@@ -2,9 +2,6 @@ from pyplay import *
 
 
 cat = Sprite('python py.png')
-cat.x = 500
-cat.y = 500
-
 
 meow = Sound('meow.ogg')
 
@@ -42,6 +39,7 @@ def cat_clone():
 
 @start(cat)
 def cat_spawn():
+    move_to(0, 0)
     print('STARTTTT')
     clone()
 
