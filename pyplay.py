@@ -1,6 +1,7 @@
 import pygame
 import threading
 import time
+import random
 
 import threads
 
@@ -11,9 +12,25 @@ from sound import *
 
 SCREEN_DIMS = 1000, 666
 
+_scr: pygame.Surface
+
+def screen_surface():
+    return _scr
+
+def stop_all():
+    pygame.quit()
+    exit()
+
+def pick_random(start: float, end: float):
+    ...
+
+
+
 def run():
+    global _scr
+
     pygame.init()
-    scr = pygame.display.set_mode(SCREEN_DIMS)
+    _scr = pygame.display.set_mode(SCREEN_DIMS)
 
     timer = pygame.time.Clock()
 
@@ -28,7 +45,7 @@ def run():
         str()
 
     while True:
-        scr.fill('#FFFFFF')
+        _scr.fill('#FFFFFF')
 
         for event in pygame.event.get():
             match event.type:
@@ -52,7 +69,7 @@ def run():
 
 
         for spr in all_sprites:
-            spr._draw(scr)
+            spr._draw(_scr)
 
         pygame.display.update()
 
