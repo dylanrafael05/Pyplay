@@ -13,24 +13,44 @@ from sound import *
 SCREEN_DIMS = 1000, 666
 
 _scr: pygame.Surface
+_time: float
 
 def screen_surface():
     return _scr
 
 def stop_all():
+    """
+    Quit this game    
+    """
     pygame.quit()
     exit()
 
 def pick_random(start: float, end: float):
-    return random.randrange(start, end)
+    """
+    Get a random number between the two provided
+    """
+    return random.random() * (end - start) + start
 
+def timer():
+    """
+    Get the current time since the timer started
+    """
+    return time.time() - _time
 
+def restart_timer():
+    """
+    Reset the timer
+    """
+    global _time
+    _time = time.time()
 
 def run():
-    global _scr
+    global _scr, _time
 
     pygame.init()
     _scr = pygame.display.set_mode(SCREEN_DIMS)
+
+    _time = time.time()
 
     timer = pygame.time.Clock()
 
