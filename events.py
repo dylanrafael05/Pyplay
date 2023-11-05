@@ -1,5 +1,6 @@
 from typing import Any
 from sprite import Sprite, _all_objects
+import threads
 from threads import script
 import pygame
 
@@ -30,7 +31,9 @@ def broadcast(event: Event, *args, **kwargs):
         e(*args, **kwargs)
     for spr in _all_objects:
         for e in spr._events(event):
+            threads.spawner = spr
             e(*args, **kwargs)
+        threads.spawner = None
 
 
 
